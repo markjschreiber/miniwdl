@@ -43,7 +43,7 @@ from concurrent import futures
 from typing import Optional, List, Set, Tuple, NamedTuple, Dict, Union, Iterable, Callable, Any
 from contextlib import ExitStack
 from .. import Env, Type, Value, Tree, StdLib
-from ..Error import InputError
+from ..Error import InputError, RuntimeError
 from .task import run_local_task, _fspaths, link_outputs, _add_downloadable_defaults
 from .download import able as downloadable, run_cached as download
 from .._util import (
@@ -353,6 +353,8 @@ class StateMachine:
                 else:
                     assert job.node.type.optional
                     v = Value.Null()
+                if isinstance(job.node, Tree.Assertion) and not v.value:
+                    raise RuntimeError(job.node.message)
             return Env.Bindings(Env.Binding(job.node.name, v))
 
         if isinstance(job.node, WorkflowOutputs):

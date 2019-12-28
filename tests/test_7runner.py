@@ -897,3 +897,48 @@ class TestAbbreviatedCallInput(RunnerTestCase):
         assert sum("18.04" in msg for msg in outputs["results"]) == 2
         outputs = self._run(caller, {"message": "hello", "docker": "ubuntu:focal"})
         assert sum("20.04" in msg for msg in outputs["results"]) == 2
+
+
+class TestAssert(RunnerTestCase):
+    task1 = R"""
+    version development
+    task div {
+        input {
+            Int numerator
+            Int denominator
+        }
+        assert denominator != 0
+        command {
+            expr ~{numerator} / ~{denominator}
+        }
+        output {
+            Int quotient = read_int(stdout())
+        }
+    }
+    """
+
+    def test_positive(self):
+        outputs = self._run(self.task1, {"numerator": 7, "denominator": 2})
+        self.assertEqual(outputs["quotient"], 3)
+
+    def test_negative(self):
+        self._run(self.task1, {"numerator": 7, "denominator": 0}, expected_exception=WDL.Error.RuntimeError)
+
+    wf1 = R"""
+    version development
+    workflow div {
+        input {
+            Int numerator
+            Int denominator
+        }
+        assert denominator != 0
+        output {
+            Int quotient = numerator / denominator
+        }
+    }
+    """
+
+    def test_workflow(self):
+        outputs = self._run(self.wf1, {"numerator": 7, "denominator": 2})
+        self.assertEqual(outputs["quotient"], 3)
+        self._run(self.wf1, {"numerator": 7, "denominator": 0}, expected_exception=WDL.Error.RuntimeError)
